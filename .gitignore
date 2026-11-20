@@ -1,0 +1,12 @@
+# secrets - this line must exist before the first commit
+.env
+.streamlit/secrets.toml
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# os
+.DS_Store
