@@ -20,14 +20,19 @@ def build_llm(model: Optional[str] = None) -> ChatOpenAI:
                       max_tokens=5)
 
 
-def turns_to_messages(turns: List[dict]) -> list:
+def turns_to_messages(turns: List[dict],
+                      system_prompt: Optional[str] = None) -> list:
     """Conversation history -> LangChain messages.
 
     The recruiter is the assistant, the candidate is the human. The turn being
     predicted is NOT included: the model sees everything before it and decides
     what the recruiter should say next.
+
+    system_prompt overrides the configured one, which is how the notebook
+    scores several prompt versions against each other in a single run.
     """
-    messages = [SystemMessage(content=config.MAIN_AGENT_SYSTEM_PROMPT)]
+    messages = [SystemMessage(content=system_prompt
+                              or config.MAIN_AGENT_SYSTEM_PROMPT)]
     for turn in turns:
         if turn["speaker"] == "recruiter":
             messages.append(AIMessage(content=turn["text"]))
@@ -45,10 +50,11 @@ def normalize(answer: str) -> str:
     return text
 
 
-def decide(turns: List[dict], llm: Optional[ChatOpenAI] = None) -> str:
+def decide(turns: List[dict], llm: Optional[ChatOpenAI] = None,
+           system_prompt: Optional[str] = None) -> str:
     """Return 'continue' | 'schedule' | 'end' for the next recruiter turn."""
     llm = llm or build_llm()
-    messages = turns_to_messages(turns)
+    messages = turns_to_messages(turns, system_prompt)
     if len(messages) == 1:                      # no history yet: open the screen
         return "continue"
     response = llm.invoke(messages)

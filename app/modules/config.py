@@ -57,7 +57,18 @@ LABELS = ["continue", "schedule", "end"]
 # --- prompts -------------------------------------------------------------
 # NOTE: MAIN_AGENT_SYSTEM_PROMPT is the string that must also appear in the
 # fine-tuning file and in tests/test_evals.ipynb. Change it in one place only.
-MAIN_AGENT_SYSTEM_PROMPT = (
+# --- Main Agent prompt variants ------------------------------------------
+# Three versions, so the notebook can score them against each other in one
+# run. MAIN_AGENT_PROMPT_VERSION in .env picks the one the app uses.
+#
+# v1 is the obvious reading of the three labels.
+# v2 adds the decision rules that the labelled data actually follows - these
+#    were derived by building a rule-based classifier on the 59 items and
+#    reading its errors (see app/modules/rule_reference.py, 88.14%).
+# v3 is v2 plus few-shot examples. The examples are PARAPHRASED, never copied
+#    from the eval set, so the measurement stays honest.
+
+MAIN_AGENT_PROMPT_V1 = (
     "You are the main agent of an SMS recruiting assistant for a Python Developer "
     "role. You read the conversation so far and decide what the recruiter should do "
     "next. Answer with exactly one word:\n"
@@ -69,6 +80,64 @@ MAIN_AGENT_SYSTEM_PROMPT = (
     "candidate has declined or is not a fit.\n"
     "Respond with only the word."
 )
+
+_V2_RULES = (
+    "You are the main agent of an SMS recruiting assistant for a Python Developer "
+    "role. You read the conversation so far and decide what the recruiter should do "
+    "next. Answer with exactly one word: continue, schedule, or end.\n"
+    "\n"
+    "Apply these rules in order, and stop at the first one that fits.\n"
+    "\n"
+    "1. The candidate withdraws, says they are not interested, has taken another "
+    "offer, or asks to be removed -> end\n"
+    "2. The candidate accepts a specific time that was offered, and asks nothing "
+    "else -> end\n"
+    "3. The candidate asks a question, even while accepting a time -> continue. "
+    "An unanswered question always outranks the time.\n"
+    "4. The candidate says the offered time does not work, that they are busy, or "
+    "asks for other times -> schedule. Declining a slot is not declining the job.\n"
+    "5. The candidate has just given their first real answer about their Python "
+    "experience -> schedule. Screening is over; offer an interview.\n"
+    "6. The candidate says they are ready to meet or to book something -> schedule\n"
+    "7. Nothing has been said yet, or the candidate is still answering screening "
+    "questions -> continue\n"
+    "\n"
+    "Respond with only the word."
+)
+
+_V3_SHOTS = (
+    "\n"
+    "Examples:\n"
+    "\n"
+    "candidate: \"Four years with Python, mostly backend APIs.\"\n"
+    "answer: schedule\n"
+    "\n"
+    "candidate: \"None of those slots suit me, I'm teaching that morning.\"\n"
+    "answer: schedule\n"
+    "\n"
+    "candidate: \"Wednesday at 11 is fine.\"\n"
+    "answer: end\n"
+    "\n"
+    "candidate: \"Wednesday at 11 is fine. Is the role hybrid or on site?\"\n"
+    "answer: continue\n"
+    "\n"
+    "candidate: \"I've signed with another company, please close my file.\"\n"
+    "answer: end\n"
+    "\n"
+    "candidate: \"What does the team work on day to day?\"\n"
+    "answer: continue\n"
+)
+
+MAIN_AGENT_PROMPT_V2 = _V2_RULES
+MAIN_AGENT_PROMPT_V3 = _V2_RULES.replace(
+    "\nRespond with only the word.", _V3_SHOTS + "\nRespond with only the word.")
+
+MAIN_AGENT_PROMPTS = {"v1": MAIN_AGENT_PROMPT_V1,
+                      "v2": MAIN_AGENT_PROMPT_V2,
+                      "v3": MAIN_AGENT_PROMPT_V3}
+
+MAIN_AGENT_PROMPT_VERSION = os.getenv("MAIN_AGENT_PROMPT_VERSION", "v3")
+MAIN_AGENT_SYSTEM_PROMPT = MAIN_AGENT_PROMPTS[MAIN_AGENT_PROMPT_VERSION]
 
 INFO_ADVISOR_SYSTEM_PROMPT = (
     "You are the info advisor of an SMS recruiting assistant. Answer the candidate's "

@@ -65,6 +65,7 @@ Advisor     Advisor     Advisor
 ## Features
 
 - [x] Multi-agent orchestration — one router, three specialised advisors
+- [x] Three prompt versions, scored against each other in one eval run
 - [x] Retrieval-augmented answers over the job description (Chroma)
 - [x] Function calling against a real interview calendar (SQLite)
 - [x] Relative dates (“next Friday”) resolved from the conversation's own clock
@@ -148,18 +149,22 @@ recruiter turns in `sms_conversations.json`.
 | | |
 |---|---|
 | Eval items | 59 (continue 25 / schedule 19 / end 15) |
-| Baseline — always `continue` | **42.37%** |
 | Random — 1 of 3 | 33.33% |
+| Baseline — always `continue` | **42.37%** |
+| Rules, no model | **88.14%** |
+| Main Agent, prompt v1 / v2 / v3 | _fill in after running the notebook_ |
 | Ceiling — contradictory labels | **96.61%** |
-| Main Agent, prompted | _fill in after running the notebook_ |
 
-Two things the notebook establishes before the model is ever called:
+Three things the notebook establishes before the model is ever called:
 
 - **The baseline.** Answering `continue` every time scores 42.37%. Anything
   that does not beat that number is not working.
 - **The ceiling.** Two pairs of identical candidate messages carry different
   labels, so two items are unanswerable by construction. 96.61% is a perfect
   score on this data, not 100%.
+- **A reference without a model.** `app/modules/rule_reference.py` is seven
+  regular expressions and reaches 88.14%. That is the number a prompt has to
+  beat before the model is earning its cost.
 
 The test set is small: one item is 1.7%, so a two-point difference between two
 prompts is noise.
