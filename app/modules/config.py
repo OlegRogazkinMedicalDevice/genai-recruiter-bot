@@ -28,10 +28,22 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-4.1-mini")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
-# Set this to the fine-tuned model id once training is done, e.g.
-#   FINETUNED_EXIT_MODEL=ft:gpt-4.1-mini-2025-04-14:personal::XXXXXXXX
-# If empty, the Exit Advisor falls back to CHAT_MODEL with a prompt.
+# The Exit Advisor can run in three ways, checked in this order:
+#
+#   LOCAL_EXIT_MODEL     a folder produced by scripts/finetune_exit_advisor.py,
+#                        e.g. models/exit-advisor-lora. This is the route in
+#                        use: OpenAI fine-tuning is closed to new accounts.
+#   FINETUNED_EXIT_MODEL an OpenAI fine-tuned model id, kept for completeness.
+#   (neither)            CHAT_MODEL with a prompt - the "before" in the
+#                        before/after comparison.
+#
+# The local model needs torch and transformers, which are NOT in
+# requirements.txt on purpose: Streamlit Community Cloud cannot carry them.
+# The deployed app runs the OpenAI path; the local model is for the notebook.
+LOCAL_EXIT_MODEL = os.getenv("LOCAL_EXIT_MODEL", "")
 FINETUNED_EXIT_MODEL = os.getenv("FINETUNED_EXIT_MODEL", "")
+
+HF_TOKEN = os.getenv("HF_TOKEN", "")
 
 # Classification must be reproducible or the evals move between runs.
 TEMPERATURE = 0.0

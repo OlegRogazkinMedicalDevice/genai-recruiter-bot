@@ -1,0 +1,8 @@
+# Local fine-tuning only — NOT installed on Streamlit Community Cloud.
+# The deployed app must stay light; torch alone would exceed its limits.
+#   pip install -r requirements-train.txt
+torch>=2.2
+transformers>=4.44
+peft>=0.12
+accelerate>=0.33
+datasets>=2.20

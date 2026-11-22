@@ -69,7 +69,7 @@ Advisor     Advisor     Advisor
 - [x] Function calling against a real interview calendar (SQLite)
 - [x] Relative dates (“next Friday”) resolved from the conversation's own clock
 - [x] Closed days handled explicitly instead of returning nothing
-- [x] Fine-tuned Exit Advisor for candidate withdrawals
+- [x] Fine-tuned Exit Advisor for candidate withdrawals (LoRA, local)
 - [x] Evals with a baseline, a ceiling, and a confusion matrix
 - [x] Streamlit interface, deployed to Streamlit Community Cloud
 
@@ -104,6 +104,14 @@ python scripts/check_setup.py      # says what is still missing
 python scripts/build_schedule_db.py data/schedule.db   # calendar  (no API key needed)
 python scripts/build_chroma.py                         # embeddings (uses the API)
 python scripts/build_finetune_data.py                  # training file for the Exit Advisor
+```
+
+Fine-tuning (after the data build, needs `requirements-train.txt`):
+
+```bash
+pip install -r requirements-train.txt
+python scripts/finetune_exit_advisor.py
+# then put LOCAL_EXIT_MODEL=models/exit-advisor-lora in .env
 ```
 
 `data/schedule.db` and `chroma_store/` are committed to the repository, so the
@@ -206,7 +214,10 @@ genai-recruiter-bot/
 │   ├── check_setup.py              # is everything in place? run this first
 │   ├── build_schedule_db.py        # db_Tech.sql -> SQLite
 │   ├── build_chroma.py             # job description -> embeddings
-│   └── build_finetune_data.py      # training + held-out validation JSONL
+│   ├── build_finetune_data.py      # training + held-out validation JSONL
+│   └── finetune_exit_advisor.py    # LoRA on Qwen2.5-0.5B-Instruct
+├── models/
+│   └── exit-advisor-lora/          # the fine-tuned adapter, a few MB
 ├── tests/
 │   └── test_evals.ipynb
 ├── data/
@@ -257,6 +268,26 @@ refusals there is nothing to hold out, so the validation set in
 `data/exit_advisor_valid.jsonl` is hand-written for this project — scoring on
 the training refusals would measure memorisation.
 
+**Fine-tuning runs locally on Hugging Face, not on OpenAI.** OpenAI's
+fine-tuning platform is closed to new accounts — organisations that had not
+run a job before 7 May 2026 can no longer create one. So
+`scripts/finetune_exit_advisor.py` trains a LoRA adapter on
+Qwen2.5-0.5B-Instruct instead. A full fine-tune of a 0.5B model needs around
+8 GB of RAM for the optimiser states alone; LoRA trains roughly half a percent
+of the weights, runs on a laptop CPU, and produces an adapter small enough to
+commit. The model ends up as a folder in this repository rather than an id on
+someone else's server.
+
+**Loss is computed on the reply only.** The prompt tokens are masked with
+`-100`, so the model is scored on what the recruiter should write rather than
+on reproducing the conversation it was handed. With 15 examples that is the
+difference between learning the behaviour and memorising the inputs.
+
+**torch and transformers are not in `requirements.txt`.** Streamlit Community
+Cloud cannot carry them. The deployed app always uses the OpenAI path; the
+fine-tuned model is used from the notebook, and its dependencies live in
+`requirements-train.txt`.
+
 ---
 <br></br>
 
@@ -266,7 +297,7 @@ the training refusals would measure memorisation.
 - [x] Chroma retrieval over the job description
 - [x] Main Agent with baseline and confusion matrix
 - [x] Exit Advisor fine-tuning data
-- [ ] Fine-tuned model id in `.env`
+- [ ] `LOCAL_EXIT_MODEL` in `.env` after training
 - [ ] Streamlit Community Cloud deployment URL
 - [ ] Final eval numbers in this README
 

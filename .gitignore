@@ -10,3 +10,6 @@ __pycache__/
 
 # os
 .DS_Store
+
+# training checkpoints — the adapter itself IS committed, the checkpoints are not
+models/*/checkpoints/
