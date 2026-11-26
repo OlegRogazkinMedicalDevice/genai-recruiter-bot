@@ -137,7 +137,11 @@ MAIN_AGENT_PROMPTS = {"v1": MAIN_AGENT_PROMPT_V1,
                       "v2": MAIN_AGENT_PROMPT_V2,
                       "v3": MAIN_AGENT_PROMPT_V3}
 
-MAIN_AGENT_PROMPT_VERSION = os.getenv("MAIN_AGENT_PROMPT_VERSION", "v3")
+# v2 is the default because it MEASURED best: 83.05% against v3's 76.27% on the
+# 59 labelled turns. The few-shot examples in v3 are single candidate messages,
+# and the labels depend on the whole conversation, so they taught the model to
+# decide from the last message alone. See the Evaluation section of README.md.
+MAIN_AGENT_PROMPT_VERSION = os.getenv("MAIN_AGENT_PROMPT_VERSION", "v2")
 MAIN_AGENT_SYSTEM_PROMPT = MAIN_AGENT_PROMPTS[MAIN_AGENT_PROMPT_VERSION]
 
 INFO_ADVISOR_SYSTEM_PROMPT = (
