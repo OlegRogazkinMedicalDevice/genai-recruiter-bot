@@ -7,7 +7,7 @@ Model: `gpt-4.1-mini`, temperature 0.0, best prompt **v2**. 59 eval items.
 | Random, 1 of 3 | 33.33% |
 | Baseline - always `continue` | 42.37% |
 | Turn number alone | 71.19% |
-| Main Agent, prompt v1 | 50.85% |
+| Main Agent, prompt v1 | 52.54% |
 | Main Agent, prompt v2 | 83.05% |
 | Main Agent, prompt v3 | 76.27% |
 | Rules, no model | 88.14% |
