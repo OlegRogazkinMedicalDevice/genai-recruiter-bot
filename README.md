@@ -144,30 +144,55 @@ Deployed: **&lt;paste the Streamlit Community Cloud URL here&gt;**
 ## Evaluation
 
 `tests/test_evals.ipynb` measures the Main Agent against the 59 human-labelled
-recruiter turns in `sms_conversations.json`.
+recruiter turns in `sms_conversations.json`. Measured on 26 November 2026,
+`gpt-4.1-mini` at temperature 0.
 
-| | |
+| Approach | Accuracy |
 |---|---|
-| Eval items | 59 (continue 25 / schedule 19 / end 15) |
 | Random — 1 of 3 | 33.33% |
-| Baseline — always `continue` | **42.37%** |
-| Rules, no model | **88.14%** |
-| Main Agent, prompt v1 / v2 / v3 | _fill in after running the notebook_ |
-| Ceiling — contradictory labels | **96.61%** |
+| Baseline — always `continue` | 42.37% |
+| Main Agent, prompt **v1** — the obvious reading of the labels | 50.85% |
+| Best possible from the turn number alone | 71.19% |
+| Main Agent, prompt **v2** — plus the decision rules in the data | **76.27%** |
+| Main Agent, prompt **v3** — plus paraphrased few-shot | **77.97%** |
+| Rules, no model — `app/modules/rule_reference.py` | 88.14% |
+| Ceiling — contradictory labels | 96.61% |
 
-Three things the notebook establishes before the model is ever called:
+`tests/eval_summary.md` is written by the notebook itself, so these figures are
+never transcribed by hand.
 
-- **The baseline.** Answering `continue` every time scores 42.37%. Anything
-  that does not beat that number is not working.
-- **The ceiling.** Two pairs of identical candidate messages carry different
-  labels, so two items are unanswerable by construction. 96.61% is a perfect
-  score on this data, not 100%.
-- **A reference without a model.** `app/modules/rule_reference.py` is seven
-  regular expressions and reaches 88.14%. That is the number a prompt has to
-  beat before the model is earning its cost.
+### What the measurement actually showed
 
-The test set is small: one item is 1.7%, so a two-point difference between two
-prompts is noise.
+**The prompt was worth 25 points.** v1 states the three labels the obvious way
+and scores 50.85%. v2 adds seven decision rules derived from the labelled data —
+*the candidate's first real answer about experience is already `schedule`*, *a
+time the candidate accepts is `end`, not `schedule`*, *declining a slot is
+`schedule`, not `end`* — and scores 76.27%. The rules came out of the errors
+made by the regex reference, not out of intuition.
+
+**Few-shot was not worth measuring.** v3 beats v2 by 1.70%, which is exactly one
+item out of 59. By this notebook's own stated rule, a two-point difference is
+noise, so v2 and v3 are indistinguishable here. v2 is the cheaper of the two —
+464 fewer characters in every request.
+
+**Seven regular expressions beat the language model by ten points.** On this
+task the model is not earning its cost in accuracy; what it buys is handling
+phrasings nobody wrote a rule for. That is worth saying plainly rather than
+hiding behind the headline number.
+
+**Most of the signal is positional.** Knowing only how deep into the
+conversation a turn is — and nothing of what was said — gets 71.19%. The model's
+77.97% is less than seven points above that. The honest reference for any future
+prompt is 71.19%, not the 42.37% majority-class baseline.
+
+### Where the 13 remaining failures come from
+
+| Count | Cause |
+|---|---|
+| 6 | The labels contradict themselves: the first experience answer is `schedule` in ten conversations and `continue` in five (2, 3, 4, 10, 11). A rule can only take the majority. |
+| 4 | The candidate names a time that was never offered (conversations 1, 3, 10) and the data still calls it `end`. Prompt rule 2 originally required the slot to have been offered; that restriction has been removed. |
+| 2 | The model answered as the recruiter instead of emitting a label, and `normalize()` returned the raw text, which then entered the results as a phantom label. It now returns `invalid`. |
+| 1 | Genuinely ambiguous: conversation 8, turn 7 reads as a soft refusal and is labelled `schedule`. |
 
 ---
 <br></br>
