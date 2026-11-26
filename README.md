@@ -65,14 +65,14 @@ Advisor     Advisor     Advisor
 ## Features
 
 - [x] Multi-agent orchestration — one router, three specialised advisors
-- [x] Three prompt versions, scored against each other in one eval run
+- [x] Four prompt versions, scored against each other in one eval run
 - [x] Retrieval-augmented answers over the job description (Chroma)
 - [x] Function calling against a real interview calendar (SQLite)
 - [x] Relative dates (“next Friday”) resolved from the conversation's own clock
 - [x] Closed days handled explicitly instead of returning nothing
 - [x] Fine-tuned Exit Advisor for candidate withdrawals (LoRA, local)
 - [x] Evals with a baseline, a ceiling, and a confusion matrix
-- [x] Streamlit interface, deployed to Streamlit Community Cloud
+- [x] Streamlit interface (deployment to Streamlit Community Cloud pending)
 
 ---
 <br></br>
@@ -87,7 +87,7 @@ Advisor     Advisor     Advisor
 ### Installation
 
 ```bash
-git clone https://github.com/<your-username>/genai-recruiter-bot.git
+git clone https://github.com/OlegRogazkinMedicalDevice/genai-recruiter-bot.git
 cd genai-recruiter-bot
 
 python -m venv .venv
@@ -151,9 +151,10 @@ recruiter turns in `sms_conversations.json`. Measured on 26 November 2026,
 |---|---|
 | Random — 1 of 3 | 33.33% |
 | Baseline — always `continue` | 42.37% |
-| Main Agent, prompt **v1** — the obvious reading of the labels | 50.85% |
+| Main Agent, prompt **v1** — the obvious reading of the labels | 52.54% |
 | Best possible from the turn number alone | 71.19% |
 | Main Agent, prompt **v3** — v2 plus paraphrased few-shot | 76.27% |
+| Main Agent, prompt **v4** — v2 plus a hard output-format block | 81.36% |
 | Main Agent, prompt **v2** — plus the decision rules in the data | **83.05%** |
 | Rules, no model — `app/modules/rule_reference.py` | 88.14% |
 | Ceiling — contradictory labels | 96.61% |
@@ -163,21 +164,37 @@ never transcribed by hand.
 
 ### What the measurement actually showed
 
-**The prompt was worth 32 points.** v1 states the three labels the obvious way
-and scores 50.85%. v2 adds seven decision rules derived from the labelled data —
+**The prompt was worth 30 points.** v1 states the three labels the obvious way
+and scores 52.54%. v2 adds seven decision rules derived from the labelled data —
 *the candidate's first real answer about experience is already `schedule`*, *a
 time the candidate accepts is `end`, not `schedule`*, *declining a slot is
 `schedule`, not `end`* — and scores 83.05%. The rules came out of the errors
 made by the regex reference, not out of intuition.
 
-**Few-shot made it worse.** v3 is v2 with six hand-written examples appended,
-and it scores 76.27% — 6.78% below v2, which is four items out of 59. The
-notebook's own stated rule is that two items are noise; four are not. The
-examples are each a single candidate message, and the labels in this data depend
-on the whole conversation, so showing the model isolated one-liners taught it to
-decide from the last message alone. More context in the prompt is not the same
-as better context. **v2 is what the app runs**, and it is also the cheaper of
-the two — 464 fewer characters in every request.
+**Then two further elaborations of v2 both made it worse.** This is the part
+worth keeping.
+
+*v3 adds six hand-written few-shot examples* and scores 76.27% — 6.78% below
+v2, four items out of 59, past this notebook's own two-item noise threshold.
+Each example is a single candidate message, while the labels in this data depend
+on the whole conversation, so isolated one-liners taught the model to decide
+from the last message alone.
+
+*v4 adds a hard output-format block* — "exactly one word, you are not the
+recruiter, there is no fourth option" — aimed squarely at the three items where
+the model answers in character instead of emitting a label. It scores 81.36%:
+one item below v2, inside the noise band, so it bought nothing and it did not
+remove the `invalid` answers either.
+
+Two independent attempts to improve a working prompt both failed to beat it.
+Elaboration is not improvement, and without the eval both v3 and v4 would have
+looked like progress — they are longer, more explicit, and more professional to
+read. **v2 is what the app runs**, and it is also the cheapest of the four.
+
+**The measurement has a noise floor of its own.** `temperature=0` is not
+bit-deterministic: v1 scored 50.85% in one run and 52.54% in the next, with no
+code change between them. That is one item, and it is the reason the notebook
+refuses to read anything into a two-item difference.
 
 **Seven regular expressions still beat the language model by five points.** On
 this task the model is not earning its cost in accuracy; what it buys is
@@ -194,7 +211,7 @@ conversation a turn is — and nothing of what was said — gets 71.19%. The mod
 | Count | Cause |
 |---|---|
 | 5 | The labels contradict themselves: the first experience answer is `schedule` in ten conversations and `continue` in five (2, 3, 4, 10, 11). A rule can only take the majority, so these are lost either way. |
-| 3 | The model answered as the recruiter instead of emitting a label (conversations 10 and 11), and `normalize()` scored it `invalid`. Earlier it returned the raw text, which entered the confusion matrix as a phantom label — an eval bug that flattered the model. Counting these as mistakes is the honest reading, so the 83.05% already carries them. |
+| 3 | The model answered as the recruiter instead of emitting a label (conversations 10 and 11), and `normalize()` scored it `invalid`. Earlier it returned the raw text, which entered the confusion matrix as a phantom label — an eval bug that flattered the model. Counting these as mistakes is the honest reading, so the 83.05% already carries them. Prompt v4 was written to remove them and did not. |
 | 1 | Conversation 3, turn 7: *"I would like to set an appointment, does Monday at 3 PM is good."* is labelled `end`, and the calendar has no Mondays at all. |
 | 1 | Genuinely ambiguous: conversation 8, turn 7 reads as a soft refusal and is labelled `schedule`. |
 

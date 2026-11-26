@@ -13,3 +13,6 @@ __pycache__/
 
 # training checkpoints — the adapter itself IS committed, the checkpoints are not
 models/*/checkpoints/
+
+# local plumbing, not part of the submission
+push_readme.bat

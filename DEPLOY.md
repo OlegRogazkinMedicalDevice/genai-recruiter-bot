@@ -42,7 +42,7 @@ In **Advanced settings → Secrets**, paste:
 OPENAI_API_KEY = "sk-..."
 CHAT_MODEL = "gpt-4.1-mini"
 EMBEDDING_MODEL = "text-embedding-3-small"
-MAIN_AGENT_PROMPT_VERSION = "v3"
+MAIN_AGENT_PROMPT_VERSION = "v2"
 ```
 
 TOML, so the values are in double quotes — unlike `.env`, which has none.

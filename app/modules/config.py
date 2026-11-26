@@ -155,10 +155,13 @@ MAIN_AGENT_PROMPTS = {"v1": MAIN_AGENT_PROMPT_V1,
                       "v3": MAIN_AGENT_PROMPT_V3,
                       "v4": MAIN_AGENT_PROMPT_V4}
 
-# v2 is the default because it MEASURED best: 83.05% against v3's 76.27% on the
-# 59 labelled turns. The few-shot examples in v3 are single candidate messages,
-# and the labels depend on the whole conversation, so they taught the model to
-# decide from the last message alone. See the Evaluation section of README.md.
+# v2 is the default because it MEASURED best on the 59 labelled turns:
+#   v1 52.54%   v2 83.05%   v3 76.27%   v4 81.36%
+# Both attempts to elaborate v2 lost to it. v3's few-shot examples are single
+# candidate messages while the labels depend on the whole conversation, and v4's
+# output-format block did not remove the `invalid` answers it was written for.
+# Do not "improve" this prompt without re-running tests/test_evals.ipynb.
+# See the Evaluation section of README.md.
 MAIN_AGENT_PROMPT_VERSION = os.getenv("MAIN_AGENT_PROMPT_VERSION", "v2")
 MAIN_AGENT_SYSTEM_PROMPT = MAIN_AGENT_PROMPTS[MAIN_AGENT_PROMPT_VERSION]
 

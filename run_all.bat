@@ -33,7 +33,7 @@ REM is expected, and must not stop the evals.
 python scripts\check_setup.py
 
 echo.
-echo ===== 4/6  running the evals (177 API calls, a few minutes) =====
+echo ===== 4/6  running the evals (one API call per prompt per item) =====
 python -m pip install -q nbconvert ipykernel
 python -m jupyter nbconvert ^
   --to notebook ^
@@ -60,16 +60,14 @@ if exist "tests\eval_summary.md" (
 
 echo.
 echo ===== 6/6  commit and push =====
+REM Generic message on purpose: this script is re-run whenever a prompt or the
+REM notebook changes, and the executed notebook plus tests/eval_summary.md are
+REM the record of what was measured.
 git add -A
-git -c user.name="Oleg Rogazkin" commit ^
-  -m "Fix normalize(), relax prompt rule 2, run evals end to end" ^
-  -m "normalize() now returns 'invalid' instead of the raw model text, so a" ^
-  -m "chatty answer counts as a mistake rather than entering the confusion" ^
-  -m "matrix as a phantom label. Prompt rule 2 no longer requires the time to" ^
-  -m "have been offered. Notebook writes tests/eval_summary.md." ^
+git commit ^
+  -m "Re-run the evals and refresh tests/eval_summary.md" ^
   -m "" ^
-  -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>" ^
-  -m "Claude-Session: https://claude.ai/code/session_01Ru1u6HbArZumU5w2WewfxA"
+  -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 git push
 
 echo.

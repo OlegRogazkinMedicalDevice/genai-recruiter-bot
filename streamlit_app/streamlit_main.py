@@ -25,7 +25,8 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 # Secrets must reach the modules before they read config.
-for name in ("OPENAI_API_KEY", "CHAT_MODEL", "EMBEDDING_MODEL", "FINETUNED_EXIT_MODEL"):
+for name in ("OPENAI_API_KEY", "CHAT_MODEL", "EMBEDDING_MODEL",
+             "MAIN_AGENT_PROMPT_VERSION", "FINETUNED_EXIT_MODEL"):
     try:
         if name in st.secrets:
             os.environ[name] = str(st.secrets[name])
