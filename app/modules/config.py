@@ -129,13 +129,31 @@ _V3_SHOTS = (
     "answer: continue\n"
 )
 
+# v4 is v2 with the output format stated as a hard constraint instead of a
+# closing pleasantry. The first run showed the model answering as the recruiter
+# on 3 of 59 items ("Great! Are you available..."), which normalize() scores as
+# `invalid`. Those 3 items are 5.08% - worth one line of prompt.
+_V4_FORMAT = (
+    "\n"
+    "Output format. This overrides everything else:\n"
+    "- Exactly one word, lowercase: continue, schedule or end.\n"
+    "- Never write a message to the candidate. You are not the recruiter here, "
+    "you are the switch that decides which advisor replies.\n"
+    "- No punctuation, no explanation, no quotation marks.\n"
+    "- If the conversation is ambiguous, still answer with one of the three "
+    "words. There is no fourth option.\n"
+)
+
 MAIN_AGENT_PROMPT_V2 = _V2_RULES
 MAIN_AGENT_PROMPT_V3 = _V2_RULES.replace(
     "\nRespond with only the word.", _V3_SHOTS + "\nRespond with only the word.")
+MAIN_AGENT_PROMPT_V4 = _V2_RULES.replace(
+    "\nRespond with only the word.", _V4_FORMAT)
 
 MAIN_AGENT_PROMPTS = {"v1": MAIN_AGENT_PROMPT_V1,
                       "v2": MAIN_AGENT_PROMPT_V2,
-                      "v3": MAIN_AGENT_PROMPT_V3}
+                      "v3": MAIN_AGENT_PROMPT_V3,
+                      "v4": MAIN_AGENT_PROMPT_V4}
 
 # v2 is the default because it MEASURED best: 83.05% against v3's 76.27% on the
 # 59 labelled turns. The few-shot examples in v3 are single candidate messages,

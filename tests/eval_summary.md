@@ -10,6 +10,7 @@ Model: `gpt-4.1-mini`, temperature 0.0, best prompt **v2**. 59 eval items.
 | Main Agent, prompt v1 | 52.54% |
 | Main Agent, prompt v2 | 83.05% |
 | Main Agent, prompt v3 | 76.27% |
+| Main Agent, prompt v4 | 81.36% |
 | Rules, no model | 88.14% |
 | Ceiling - contradictory labels | 96.61% |
 
