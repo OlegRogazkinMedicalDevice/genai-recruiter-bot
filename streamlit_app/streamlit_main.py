@@ -114,7 +114,12 @@ for role, text, action, consultations in st.session_state.messages:
             st.caption(ACTION_BADGE.get(action, action))
         show_consultations(consultations)
 
-finished = any(action == "end" for _, _, action, _ in st.session_state.messages[1:])
+# Closed only when the Exit Advisor actually closed it. Going by the badge
+# would end the chat whenever the Main Agent said `end` and the Exit Advisor
+# declined - exactly the turn where the Scheduling Advisor rescued it.
+finished = any(consultation.get("decision") == "end_conversation"
+               for _, _, _, consultations in st.session_state.messages[1:]
+               for consultation in (consultations or []))
 
 if finished:
     st.info("This conversation has ended. Use **Restart conversation** in the sidebar.")

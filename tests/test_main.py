@@ -135,6 +135,34 @@ def test_the_opening_turn_needs_no_advisor():
     assert len(bot.turns) == 1
 
 
+def test_the_conversation_ends_only_when_the_exit_advisor_says_so():
+    """A routing label of `end` is not an outcome.
+
+    The Main Agent can route to `end` while the Exit Advisor declines and the
+    Scheduling Advisor rescues the turn with real times. Closing the chat on
+    the label would hang up on a candidate who was just offered a slot.
+    """
+    exit_ = Recorder("dont_end", "")
+    sched = Recorder("schedule", "Friday at 09:00 or 10:00 — do either work?")
+    wire({}, "end", Recorder("info_not_needed", ""), sched, exit_)
+
+    reply = RecruiterBot(START).respond("Can we meet next Friday morning?")
+
+    assert reply["action"] == "end"
+    assert reply["ended"] is False
+    assert "Friday" in reply["text"]
+
+
+def test_the_conversation_ends_when_the_exit_advisor_closes_it():
+    exit_ = Recorder("end_conversation", "All the best with the new role.")
+    wire({}, "end", Recorder("info_not_needed", ""),
+         Recorder("dont_schedule", ""), exit_)
+
+    reply = RecruiterBot(START).respond("I took another offer, thanks.")
+
+    assert reply["ended"] is True
+
+
 # --- the slots an advisor reports must be the slots it used ---------------
 
 def test_the_requested_day_changes_which_slots_are_resolved():

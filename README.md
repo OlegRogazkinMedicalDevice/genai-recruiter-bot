@@ -463,6 +463,17 @@ this is written down rather than summarised as a success. The honest reading is
 that 15 examples are enough to move a 0.5B model's register and not enough to
 teach it a task.
 
+**A routing label is not an outcome.** The Main Agent decides `continue`,
+`schedule` or `end`, and that decision is what the evals score — but the
+conversation is over only when the Exit Advisor agrees it is. Ask for an
+interview on a particular day and the router often answers `end`, because a
+named day looks like a closed deal; the Exit Advisor then declines, the
+Scheduling Advisor is consulted instead, and the candidate gets real times.
+Closing the chat on the label would hang up on exactly that person. The badge
+under each message still shows the routing decision, because that is the
+number the evaluation measures, and `respond()` returns a separate `ended`
+flag that the interface and the terminal loop both read.
+
 **The consultation costs an extra call per turn, and it is worth it.**
 Routing straight to an advisor took two API calls: the Main Agent's decision
 and the advisor's reply. Consulting takes three — the decision, the advisor's

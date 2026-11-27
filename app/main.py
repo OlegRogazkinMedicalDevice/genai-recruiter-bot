@@ -91,8 +91,15 @@ class RecruiterBot:
 
         text = main_agent.compose(self.turns, consultations)
 
+        # The Main Agent's label is a routing decision, not an outcome. The
+        # conversation is over only if the Exit Advisor agreed that it is:
+        # it may well decline, as it does when a candidate who names a day is
+        # routed to `end` but still has no time booked.
+        ended = any(c["decision"] == "end_conversation" for c in consultations)
+
         self.add_recruiter(text, action)
-        return {"action": action, "text": text, "consultations": consultations}
+        return {"action": action, "text": text,
+                "consultations": consultations, "ended": ended}
 
     def opening(self) -> dict:
         text = ("Thanks for applying to our Python Developer opening. What kinds of "
@@ -114,7 +121,7 @@ def main() -> None:
             break
         reply = bot.respond(candidate)
         print(f"[recruiter / {reply['action']}] {reply['text']}")
-        if reply["action"] == "end":
+        if reply["ended"]:
             break
 
 
