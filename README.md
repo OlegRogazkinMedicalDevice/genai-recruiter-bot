@@ -370,6 +370,8 @@ Coursework, submitted for the Technion School of Continuing Education.
 
 **Oleg Rogazkin** — HTCGAI4, cohort June 2026
 
+**Mamon Dehabra** — HTCGAI4, cohort June 2026
+
 ---
 <br></br>
 
