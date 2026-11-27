@@ -284,13 +284,15 @@ genai-recruiter-bot/
 │   ├── build_finetune_data.py      # training + held-out validation JSONL
 │   └── finetune_exit_advisor.py    # LoRA on Qwen2.5-0.5B-Instruct
 ├── models/
-│   └── exit-advisor-lora/          # the fine-tuned adapter, a few MB
+│   └── exit-advisor-lora/          # the fine-tuned LoRA adapter, 34 MB
 ├── tests/
 │   └── test_evals.ipynb
 ├── data/
 │   ├── schedule.db                 # 9,396 slots, 2024
 │   ├── sms_conversations.json      # 15 conversations, 59 labelled turns
 │   ├── job_description.pdf
+│   ├── exit_advisor_train.jsonl    # 15 examples for the Exit Advisor
+│   ├── exit_advisor_valid.jsonl    # hand-written held-out cases
 │   └── db_Tech.sql                 # the original script, for reference
 ├── chroma_store/                   # built by scripts/build_chroma.py
 ├── .streamlit/
@@ -298,7 +300,11 @@ genai-recruiter-bot/
 │   └── secrets.toml.example        # the shape of the Streamlit Cloud secrets
 ├── .env.example
 ├── .gitignore
-├── requirements.txt
+├── requirements.txt               # the deployed app
+├── requirements-train.txt         # torch, transformers, peft — training only
+├── setup.bat                      # one-command Windows setup
+├── run_all.bat                    # re-run the evals and push the result
+├── DEPLOY.md                      # Streamlit Community Cloud, step by step
 └── README.md
 ```
 
