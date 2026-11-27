@@ -76,3 +76,40 @@ def propose(turns: List[dict],
     response = llm.invoke([SystemMessage(content=config.SCHEDULING_ADVISOR_SYSTEM_PROMPT),
                            HumanMessage(content=prompt)])
     return response.content.strip()
+
+
+# --- consultation ---------------------------------------------------------
+
+_SHOULD_SCHEDULE_PROMPT = (
+    "You advise a recruiter's assistant. Decide whether this is the moment to "
+    "put interview times in front of the candidate.\n"
+    "Answer with exactly one word:\n"
+    "  yes  - offer slots, or react to the times the candidate just named\n"
+    "  no   - it is too early, or the candidate is asking about something else\n"
+    "No punctuation, no explanation."
+)
+
+
+def should_schedule(turns: List[dict], llm: Optional[ChatOpenAI] = None) -> bool:
+    """The advisor's own decision: Sched, or Don't Sched."""
+    llm = llm or ChatOpenAI(model=config.CHAT_MODEL,
+                            temperature=config.TEMPERATURE,
+                            api_key=config.OPENAI_API_KEY,
+                            max_tokens=5)
+    history = "\n".join(f"{t['speaker']}: {t['text']}" for t in turns[-6:])
+    response = llm.invoke([SystemMessage(content=_SHOULD_SCHEDULE_PROMPT),
+                           HumanMessage(content=f"Conversation:\n{history}")])
+    return response.content.strip().lower().startswith("y")
+
+
+def consult(turns: List[dict], conversation_start: str,
+            requested_phrase: str = "", llm: Optional[ChatOpenAI] = None) -> dict:
+    """Advise the Main Agent. The SQL lookup happens only on the Sched branch."""
+    if not should_schedule(turns, llm):
+        return {"advisor": "scheduling", "decision": "dont_schedule",
+                "draft": "", "evidence": []}
+
+    slots = db.find_available_slots(conversation_start)
+    return {"advisor": "scheduling", "decision": "schedule",
+            "draft": propose(turns, conversation_start, requested_phrase, llm),
+            "evidence": db.describe_slots(slots)}

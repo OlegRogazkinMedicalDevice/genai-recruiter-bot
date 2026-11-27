@@ -1,10 +1,25 @@
-"""Orchestration: the Main Agent routes every turn to one of three advisors.
+"""Orchestration: the Main Agent consults advisors, then answers the candidate.
 
     candidate SMS
           |
-      Main Agent  --> continue --> Info Advisor      (Chroma + job description)
-                  --> schedule --> Scheduling Advisor (SQLite + function call)
-                  --> end      --> Exit Advisor       (fine-tuned)
+      Main Agent ---- decides continue / schedule / end
+          |
+          |  consults the matching advisor
+          v
+      Info Advisor        info needed      -> Chroma + job description -> draft
+                          info not needed  -> back to the Main Agent
+      Scheduling Advisor  schedule         -> SQLite + function call   -> draft
+                          don't schedule   -> back to the Main Agent
+      Exit Advisor        end conversation -> fine-tuned model         -> draft
+                          don't end        -> back to the Main Agent
+          |
+          |  an advisor that declines sends the turn back, and the Main Agent
+          |  consults a second one before giving up
+          v
+      Main Agent ---- sends one message to the candidate
+
+No advisor talks to the candidate. They return drafts and evidence to the Main
+Agent, which owns the channel - the shape the project brief specifies.
 
 The conversation history is the memory: it is passed whole to every advisor,
 because the OpenAI API is stateless and the next decision depends on all of it.
@@ -13,6 +28,11 @@ because the OpenAI API is stateless and the next decision depends on all of it.
 from typing import List, Optional
 
 from .modules import config, exit_advisor, info_advisor, main_agent, scheduling_advisor
+
+# Which advisor the Main Agent consults first, and whom it asks when that one
+# declines. The brief's diagram calls the second hop "Consult Advisor Again".
+FIRST_ADVISOR = {"continue": "info", "schedule": "scheduling", "end": "exit"}
+SECOND_ADVISOR = {"info": "scheduling", "scheduling": "info", "exit": "scheduling"}
 
 SCHEDULING_HINTS = ("monday", "tuesday", "wednesday", "thursday", "friday",
                     "saturday", "sunday", "tomorrow", "today", "next week",
@@ -37,27 +57,42 @@ class RecruiterBot:
     def decide(self) -> str:
         return main_agent.decide(self.turns)
 
+    # -- consulting -------------------------------------------------------
+    def _consult(self, advisor: str, candidate_text: str) -> dict:
+        """Ask one advisor. It decides for itself whether to act."""
+        if advisor == "scheduling":
+            phrase = candidate_text or ""
+            if not any(hint in phrase.lower() for hint in SCHEDULING_HINTS):
+                phrase = ""
+            return scheduling_advisor.consult(self.turns, self.conversation_start,
+                                              requested_phrase=phrase)
+        if advisor == "exit":
+            return exit_advisor.consult(self.turns)
+        question = candidate_text or "Tell me about the role."
+        return info_advisor.consult(self.turns, question)
+
     def respond(self, candidate_text: Optional[str] = None) -> dict:
-        """Take the candidate's SMS, return {'action', 'text'}."""
+        """Take the candidate's SMS, return {'action', 'text', 'consultations'}.
+
+        The Main Agent decides, consults, consults again if the first advisor
+        declined, and only then speaks. consultations is the trail, kept so the
+        interface can show which advisor was asked and what it decided.
+        """
         if candidate_text:
             self.add_candidate(candidate_text)
 
         action = self.decide()
+        first = FIRST_ADVISOR[action]
 
-        if action == "schedule":
-            phrase = candidate_text or ""
-            if not any(hint in phrase.lower() for hint in SCHEDULING_HINTS):
-                phrase = ""
-            text = scheduling_advisor.propose(self.turns, self.conversation_start,
-                                              requested_phrase=phrase)
-        elif action == "end":
-            text = exit_advisor.close(self.turns)
-        else:
-            question = candidate_text or "Tell me about the role."
-            text = info_advisor.answer(question)
+        consultations = [self._consult(first, candidate_text or "")]
+        if not consultations[0]["draft"]:
+            consultations.append(
+                self._consult(SECOND_ADVISOR[first], candidate_text or ""))
+
+        text = main_agent.compose(self.turns, consultations)
 
         self.add_recruiter(text, action)
-        return {"action": action, "text": text}
+        return {"action": action, "text": text, "consultations": consultations}
 
     def opening(self) -> dict:
         text = ("Thanks for applying to our Python Developer opening. What kinds of "

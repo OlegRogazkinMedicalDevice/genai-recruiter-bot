@@ -19,11 +19,13 @@
 - [Features](#features)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
+- [Screenshots](#screenshots)
 - [Evaluation](#evaluation)
 - [Code Examples](#code-examples)
 - [Project Structure](#project-structure)
 - [Design Decisions](#design-decisions)
 - [To-Do List](#to-do-list)
+- [Contributing](#contributing)
 - [License](#license)
 - [Contact](#contact)
 - [Acknowledgments](#acknowledgments)
@@ -42,18 +44,37 @@ A **Main Agent** reads the conversation so far and decides what happens next.
 It routes each turn to one of three advisors:
 
 ```text
-        candidate SMS
-              |
-          Main Agent
-         /     |      \
- continue   schedule    end
-     |         |         |
-Info        Scheduling  Exit
-Advisor     Advisor     Advisor
-(Chroma +   (SQLite +   (fine-tuned
- job spec)   function    model)
-             calling)
+                       candidate SMS
+                             |
+                        Main Agent
+                   decides continue / schedule / end
+                             |
+                      consults one advisor
+                             |
+      +----------------------+----------------------+
+      |                      |                      |
+ Info Advisor        Scheduling Advisor        Exit Advisor
+ info needed?        schedule now?             end now?
+      |                      |                      |
+ yes: Chroma +        yes: SQLite +           yes: fine-tuned
+ job description      function calling        model writes the
+ -> draft             -> draft                close -> draft
+      |                      |                      |
+ no: hand back        no: hand back           no: hand back
+      +----------------------+----------------------+
+                             |
+                 Main Agent consults a second
+                 advisor if the first declined
+                             |
+                        Main Agent
+                   sends one message to the candidate
 ```
+
+No advisor speaks to the candidate. Each one decides for itself whether to
+act, then returns a draft and its evidence to the Main Agent, which owns the
+channel. An advisor that declines sends the turn back — the *consult advisor
+again* branch — and only if both decline does the Main Agent write the turn
+itself.
 
 <div style="background: #272822; color: #f8f8f2; padding: 10px; border-radius: 8px;">
   <b>Technologies:</b> Python, LangChain, OpenAI API, Chroma, SQLite, Streamlit, scikit-learn
@@ -64,7 +85,7 @@ Advisor     Advisor     Advisor
 
 ## Features
 
-- [x] Multi-agent orchestration — one router, three specialised advisors
+- [x] Multi-agent orchestration — the Main Agent consults three advisors and is the only component that answers the candidate
 - [x] Four prompt versions, scored against each other in one eval run
 - [x] Retrieval-augmented answers over the job description (Chroma)
 - [x] Function calling against a real interview calendar (SQLite)
@@ -135,11 +156,31 @@ In the browser:
 streamlit run streamlit_app/streamlit_main.py
 ```
 
+The orchestration tests need neither an API key nor a network:
+
+```bash
+python tests/test_main.py
+```
+
 Live: **https://genai-recruiter-bot-rogazkin.streamlit.app**
 
 The deployed app runs on Python 3.12 with the OpenAI Exit Advisor path; the
 key lives in *Settings → Secrets* on Streamlit Community Cloud and never in
 the repository.
+
+---
+<br></br>
+
+## Screenshots
+
+The live app is the fastest way to see it:
+**<https://genai-recruiter-bot-rogazkin.streamlit.app>**
+
+What you see there: a badge under each message showing the Main Agent's
+decision for that turn — 🟦 continue, 🟩 schedule, 🟥 end — and, under it,
+*Main Agent consulted N advisor(s)*. Opening that shows which advisor was
+asked, what it decided, and the evidence it came back with: the slots the SQL
+lookup returned, or the job-description excerpts the vector store matched.
 
 ---
 <br></br>
@@ -227,6 +268,34 @@ conversation a turn is — and nothing of what was said — gets 71.19%. The mod
 79.66% is eight points above that, and that gap, not the 37-point gap over
 "always continue", is what the model actually earned.
 
+### The four prompting strategies, and what each one was worth
+
+**Roles.** Every call is framed with a system message that says who is
+speaking and to whom — the Main Agent is a switch, the advisors are the
+recruiter. The `invalid` answers in the confusion matrix are exactly the turns
+where that framing slipped and the model answered *as* the recruiter instead of
+emitting a label.
+
+**Instruction prompts.** v2 is seven numbered rules applied in order with an
+explicit stop at the first match. That ordering is doing real work: rule 3
+("a question outranks an accepted time") exists because without it the model
+closed conversations that still had an open question in them.
+
+**Few-shot learning.** v3 adds six hand-written examples and scores 72.88%,
+**6.78% below** the instruction-only v2 — four items, past the noise threshold.
+The examples are single candidate messages while the labels depend on the whole
+conversation, so they taught the model to decide from the last message alone.
+Few-shot was applied, measured, and rejected on the evidence rather than on
+taste.
+
+**API parameters.** `temperature=0` throughout, because the eval has to be
+repeatable; `max_tokens=5` on every classification call, which both caps the
+cost and makes a chatty answer impossible to complete; `max_tokens=120` on the
+one call that writes prose. The reproducibility paragraph above is what happens
+at the edge of what `temperature=0` can promise. The homework app
+`Prompt Parameter Tuner` is where temperature, top-p and max tokens were
+explored interactively before these values were fixed here.
+
 ### Where the 12 remaining failures come from
 
 | Count | Cause |
@@ -295,6 +364,7 @@ genai-recruiter-bot/
 ├── models/
 │   └── exit-advisor-lora/          # the fine-tuned LoRA adapter, 34 MB
 ├── tests/
+│   ├── test_main.py                # orchestration tests, no API key needed
 │   └── test_evals.ipynb
 ├── data/
 │   ├── schedule.db                 # 9,396 slots, 2024
@@ -309,6 +379,7 @@ genai-recruiter-bot/
 │   └── secrets.toml.example        # the shape of the Streamlit Cloud secrets
 ├── .env.example
 ├── .gitignore
+├── LICENSE
 ├── requirements.txt               # the deployed app
 ├── requirements-train.txt         # torch, transformers, peft — training only
 ├── setup.bat                      # one-command Windows setup
@@ -401,6 +472,9 @@ fine-tuned model is used from the notebook, and its dependencies live in
 - [x] LoRA adapter trained and committed to `models/exit-advisor-lora/`
 - [x] Exit Advisor measured before and after fine-tuning
 - [x] Final eval numbers in this README — measured 27 November 2026
+- [x] Advisors consult the Main Agent instead of answering the candidate —
+      the architecture the project brief specifies, with the *consult advisor
+      again* branch and offline tests in `tests/test_main.py`
 - [x] Streamlit Community Cloud deployment — live at
       <https://genai-recruiter-bot-rogazkin.streamlit.app>, all three routes
       exercised against it on 27 November 2026
@@ -408,9 +482,38 @@ fine-tuned model is used from the notebook, and its dependencies live in
 ---
 <br></br>
 
+## Contributing
+
+This is coursework for two people, but the rules that kept it consistent are
+worth stating.
+
+**Re-run the evals before changing a prompt, and commit the result.**
+`run_all.bat` executes `tests/test_evals.ipynb` headless, writes
+`tests/eval_summary.md`, and pushes both. Every figure in this README comes
+from that file; none is typed by hand. A prompt change that is not measured in
+the same session as its baseline cannot be compared against it — the
+reproducibility paragraph above says why.
+
+**Run `python tests/test_main.py` before touching `app/main.py`.** It needs no
+API key and no network, and it is what catches a broken consultation path
+before the deployed app does.
+
+**Keep secrets out.** `.env` and `.streamlit/secrets.toml` are in
+`.gitignore`; `.env.example` and `.streamlit/secrets.toml.example` show the
+shape without the values. `scripts/check_setup.py` prints the first six
+characters of the key and no more.
+
+**Work on a branch and open it for review.** That is how the fine-tuning run
+arrived: trained and evaluated on one machine, pushed as `exit-advisor-lora`,
+merged here after the numbers had been read.
+
+---
+<br></br>
+
 ## License
 
-Coursework, submitted for the Technion School of Continuing Education.
+MIT — see [LICENSE](LICENSE). Coursework, submitted for the Technion School of
+Continuing Education.
 
 ---
 <br></br>

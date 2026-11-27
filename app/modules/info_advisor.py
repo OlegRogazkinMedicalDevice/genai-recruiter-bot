@@ -1,5 +1,11 @@
 """Info Advisor - answers questions about the role from the job description.
 
+The Main Agent does not call answer() directly. It calls consult(), which is
+the shape the project brief asks for: the advisor first makes its own decision
+- is information actually needed here? - and only then reaches for the vector
+store. When it decides information is not needed it hands the turn back to the
+Main Agent, which consults another advisor instead.
+
 The PDF is embedded once by scripts/build_chroma.py and persisted to
 chroma_store/, which is committed to the repository. Streamlit Community Cloud
 then only reads it - no embedding at startup, no PDF parsing in the cloud.
@@ -47,3 +53,49 @@ def answer(question: str, llm: Optional[ChatOpenAI] = None) -> str:
     response = llm.invoke([SystemMessage(content=config.INFO_ADVISOR_SYSTEM_PROMPT),
                            HumanMessage(content=prompt)])
     return response.content.strip()
+
+
+# --- consultation ---------------------------------------------------------
+
+_NEEDS_INFO_PROMPT = (
+    "You advise a recruiter's assistant. Decide whether the candidate's last "
+    "message needs an answer drawn from the job description - duties, stack, "
+    "seniority, location, salary, process.\n"
+    "Answer with exactly one word:\n"
+    "  yes  - the candidate asked something about the role\n"
+    "  no   - the candidate asked nothing, or asked about scheduling only\n"
+    "No punctuation, no explanation."
+)
+
+
+def needs_info(turns: List[dict], question: str,
+               llm: Optional[ChatOpenAI] = None) -> bool:
+    """The advisor's own decision: Info Needed, or Info Not Needed."""
+    if not question.strip():
+        return False
+    llm = llm or ChatOpenAI(model=config.CHAT_MODEL,
+                            temperature=config.TEMPERATURE,
+                            api_key=config.OPENAI_API_KEY,
+                            max_tokens=5)
+    history = "\n".join(f"{t['speaker']}: {t['text']}" for t in turns[-6:])
+    response = llm.invoke([SystemMessage(content=_NEEDS_INFO_PROMPT),
+                           HumanMessage(content=f"Conversation:\n{history}\n\n"
+                                                f"Last candidate message: {question}")])
+    return response.content.strip().lower().startswith("y")
+
+
+def consult(turns: List[dict], question: str,
+            llm: Optional[ChatOpenAI] = None) -> dict:
+    """Advise the Main Agent. Returns a consultation, never a sent message.
+
+    decision is "info_needed" or "info_not_needed". Only the first does the
+    vector retrieval; the second is the branch that sends the turn back to the
+    Main Agent so another advisor can be consulted.
+    """
+    if not needs_info(turns, question, llm):
+        return {"advisor": "info", "decision": "info_not_needed",
+                "draft": "", "evidence": []}
+
+    excerpts = retrieve(question)
+    return {"advisor": "info", "decision": "info_needed",
+            "draft": answer(question, llm), "evidence": excerpts}

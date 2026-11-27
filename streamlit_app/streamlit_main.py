@@ -41,6 +41,33 @@ st.set_page_config(page_title="Python Developer — SMS screening",
 
 ACTION_BADGE = {"continue": "🟦 continue", "schedule": "🟩 schedule", "end": "🟥 end"}
 
+ADVISOR_NAME = {"info": "Info Advisor", "scheduling": "Scheduling Advisor",
+                "exit": "Exit Advisor", "stub": "advisor"}
+DECISION_NAME = {"info_needed": "information needed → vector retrieval",
+                 "info_not_needed": "information not needed → back to the Main Agent",
+                 "schedule": "schedule → SQL lookup",
+                 "dont_schedule": "do not schedule → back to the Main Agent",
+                 "end_conversation": "end the conversation → fine-tuned model",
+                 "dont_end": "do not end → back to the Main Agent"}
+
+
+def show_consultations(consultations):
+    """The advisors the Main Agent consulted before writing this message."""
+    if not consultations:
+        return
+    with st.expander(f"Main Agent consulted "
+                     f"{len(consultations)} advisor(s)", expanded=False):
+        for consultation in consultations:
+            advisor = ADVISOR_NAME.get(consultation["advisor"],
+                                       consultation["advisor"])
+            decision = DECISION_NAME.get(consultation["decision"],
+                                         consultation["decision"])
+            st.markdown(f"**{advisor}** — {decision}")
+            evidence = consultation.get("evidence")
+            if evidence:
+                st.caption(evidence if isinstance(evidence, str)
+                           else " · ".join(str(item)[:200] for item in evidence))
+
 # --- sidebar -------------------------------------------------------------
 with st.sidebar:
     st.header("Settings")
@@ -67,25 +94,28 @@ if "bot" not in st.session_state:
     st.session_state.bot = RecruiterBot(conversation_start=start)
     st.session_state.messages = []
     opening = st.session_state.bot.opening()
-    st.session_state.messages.append(("assistant", opening["text"], opening["action"]))
+    st.session_state.messages.append(("assistant", opening["text"],
+                                      opening["action"], []))
 
 st.title("Python Developer — SMS screening")
-st.caption("Main Agent routes every message to the Info, Scheduling or Exit advisor.")
+st.caption("The Main Agent consults the Info, Scheduling or Exit advisor, then "
+           "writes the message itself. Open a consultation to see what was asked.")
 
-for role, text, action in st.session_state.messages:
+for role, text, action, consultations in st.session_state.messages:
     with st.chat_message(role):
         st.write(text)
         if action:
             st.caption(ACTION_BADGE.get(action, action))
+        show_consultations(consultations)
 
-finished = any(action == "end" for _, _, action in st.session_state.messages[1:])
+finished = any(action == "end" for _, _, action, _ in st.session_state.messages[1:])
 
 if finished:
     st.info("This conversation has ended. Use **Restart conversation** in the sidebar.")
 else:
     candidate_text = st.chat_input("Reply as the candidate…")
     if candidate_text:
-        st.session_state.messages.append(("user", candidate_text, None))
+        st.session_state.messages.append(("user", candidate_text, None, []))
         with st.chat_message("user"):
             st.write(candidate_text)
         with st.chat_message("assistant"):
@@ -93,5 +123,8 @@ else:
                 reply = st.session_state.bot.respond(candidate_text)
             st.write(reply["text"])
             st.caption(ACTION_BADGE.get(reply["action"], reply["action"]))
-        st.session_state.messages.append(("assistant", reply["text"], reply["action"]))
+            show_consultations(reply.get("consultations", []))
+        st.session_state.messages.append(("assistant", reply["text"],
+                                          reply["action"],
+                                          reply.get("consultations", [])))
         st.rerun()

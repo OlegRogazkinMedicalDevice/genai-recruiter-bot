@@ -117,3 +117,42 @@ def close(turns: List[dict], llm: Optional[ChatOpenAI] = None,
     if config.LOCAL_EXIT_MODEL:
         return _close_local(turns)
     return _close_openai(turns, llm)
+
+
+# --- consultation ---------------------------------------------------------
+
+_SHOULD_END_PROMPT = (
+    "You advise a recruiter's assistant. Decide whether this conversation "
+    "should be closed now.\n"
+    "Answer with exactly one word:\n"
+    "  yes  - the candidate withdrew, or a time is agreed and nothing is open\n"
+    "  no   - something is still unresolved and the conversation continues\n"
+    "No punctuation, no explanation."
+)
+
+
+def should_end(turns: List[dict], llm: Optional[ChatOpenAI] = None) -> bool:
+    """The advisor's own decision: End Conversation, or Don't End Conv."""
+    llm = llm or ChatOpenAI(model=config.CHAT_MODEL,
+                            temperature=config.TEMPERATURE,
+                            api_key=config.OPENAI_API_KEY,
+                            max_tokens=5)
+    history = "\n".join(f"{t['speaker']}: {t['text']}" for t in turns[-6:])
+    response = llm.invoke([SystemMessage(content=_SHOULD_END_PROMPT),
+                           HumanMessage(content=f"Conversation:\n{history}")])
+    return response.content.strip().lower().startswith("y")
+
+
+def consult(turns: List[dict], llm: Optional[ChatOpenAI] = None) -> dict:
+    """Advise the Main Agent.
+
+    The draft on the End branch comes from the fine-tuned model. The Main Agent
+    relays it unchanged - paraphrasing it would undo the fine-tuning, which is
+    the one thing this advisor exists to demonstrate.
+    """
+    if not should_end(turns, llm):
+        return {"advisor": "exit", "decision": "dont_end",
+                "draft": "", "evidence": []}
+
+    return {"advisor": "exit", "decision": "end_conversation",
+            "draft": close(turns, llm), "evidence": [backend_name()]}

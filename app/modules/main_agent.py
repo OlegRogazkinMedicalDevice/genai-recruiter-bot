@@ -71,3 +71,41 @@ def decide(turns: List[dict], llm: Optional[ChatOpenAI] = None,
         return "continue"
     response = llm.invoke(messages)
     return normalize(response.content)
+
+
+# --- composing the message that reaches the candidate ---------------------
+
+COMPOSE_FALLBACK_PROMPT = (
+    "You are the recruiter in an SMS screening conversation for a Python "
+    "Developer role. Both advisors you consulted declined to act, so write the "
+    "next message yourself: one or two sentences, warm, specific to what the "
+    "candidate just said, and moving towards booking an interview. Never invent "
+    "an interview time - no advisor supplied one."
+)
+
+
+def compose(turns: List[dict], consultations: List[dict],
+            llm: Optional[ChatOpenAI] = None) -> str:
+    """The Main Agent's own output - the only text the candidate ever sees.
+
+    Advisors return drafts, not messages. The Main Agent relays the first draft
+    it was given, because the drafts are already written as the recruiter and,
+    in the Exit Advisor's case, carry the register the fine-tuning produced;
+    rewriting them here would throw that away. When every advisor declined,
+    there is no draft to relay and the Main Agent writes the turn itself.
+    """
+    for consultation in consultations:
+        if consultation.get("draft"):
+            return consultation["draft"]
+
+    llm = llm or ChatOpenAI(model=config.CHAT_MODEL,
+                            temperature=config.TEMPERATURE,
+                            api_key=config.OPENAI_API_KEY,
+                            max_tokens=120)
+    messages = [SystemMessage(content=COMPOSE_FALLBACK_PROMPT)]
+    for turn in turns[-8:]:
+        if turn["speaker"] == "recruiter":
+            messages.append(AIMessage(content=turn["text"]))
+        else:
+            messages.append(HumanMessage(content=turn["text"]))
+    return llm.invoke(messages).content.strip()
