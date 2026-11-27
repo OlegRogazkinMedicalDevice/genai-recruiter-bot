@@ -167,6 +167,14 @@ comes from one execution on one machine. `gpt-4.1-mini` at temperature 0.
 `tests/eval_summary.md` is written by the notebook itself, so these figures are
 never transcribed by hand.
 
+The ceiling counts one thing only: candidate messages that appear **verbatim**
+in two conversations with different labels. There are two such items, so 96.61%
+is the most any classifier can score on the data as written. It does not cover
+the wider contradiction described below — the first experience answer labelled
+`schedule` in ten conversations and `continue` in five — because those messages
+are worded differently and no exact-match grouping can see them. Counting that
+one as well would put the real ceiling at 91.53%.
+
 ### What the measurement actually showed
 
 **The prompt was worth 30 points.** v1 states the three labels the obvious way
@@ -208,7 +216,8 @@ that the two-item noise rule above is a floor, not a ceiling: a difference
 worth acting on has to survive a re-run, and a prompt change should be measured
 in the same session as the baseline it is compared against.
 
-**Seven regular expressions still beat the language model by eight points.** On
+**Seven rules, written as four regular expressions, still beat the language
+model by eight points.** On
 this task the model is not earning its cost in accuracy; what it buys is
 handling phrasings nobody wrote a rule for. That is worth saying plainly rather
 than hiding behind the headline number.
@@ -222,7 +231,7 @@ conversation a turn is — and nothing of what was said — gets 71.19%. The mod
 
 | Count | Cause |
 |---|---|
-| 5 | The labels contradict themselves: the first experience answer is `schedule` in ten conversations and `continue` in five (2, 3, 4, 10, 11). A rule can only take the majority, so these are lost either way. |
+| 5 | The labels contradict themselves: the first experience answer is `schedule` in ten conversations and `continue` in five (2, 3, 4, 10, 11). A rule can only take the majority, so these five are lost either way. They sit outside the 96.61% ceiling, which counts only verbatim-identical messages. |
 | 3 | The model answered as the recruiter instead of emitting a label (conversations 10 and 11), and `normalize()` scored it `invalid`. Earlier it returned the raw text, which entered the confusion matrix as a phantom label — an eval bug that flattered the model. Counting these as mistakes is the honest reading, so the 79.66% already carries them. Prompt v4 was written to remove them and did not. |
 | 3 | The candidate names a time and the data calls it `end`, but the model keeps the conversation open: *"Monday at 3 PM is good"* (conversations 3 and 10) and *"Tuesday at 10 AM works"* (conversation 14). Prompt rule 2 covers exactly this and the model still misses it — these three are the whole of the drop in `end` recall, from 0.933 in the earlier run to 0.800 here. |
 | 1 | Genuinely ambiguous: conversation 8, turn 7 reads as a soft refusal and is labelled `schedule`. |

@@ -13,9 +13,13 @@ That middle number is what makes the eval readable. An LLM scoring 70% is not
 a hard task, it is a bad prompt. The rules were also how the decision logic in
 MAIN_AGENT_PROMPT_V2 was found: each rule here is one line of that prompt.
 
-The seven turns these rules still miss are exactly the contradictory ones -
-the candidate's first experience answer, labelled `schedule` in ten
-conversations and `continue` in five.
+These rules miss seven turns. Five of them are the contradictory ones - the
+candidate's first experience answer, labelled `schedule` in ten conversations
+and `continue` in five, so a majority-taking rule loses the five (conversations
+2, 3, 4, 10 and 11). The other two are ordinary misses the regexes cannot see:
+conversation 2 turn 7, where "I'll reach out" reads as a withdrawal and is
+labelled `schedule`, and conversation 10 turn 5, where a partial answer about
+AWS is labelled `schedule` and the rules keep screening.
 """
 
 import re

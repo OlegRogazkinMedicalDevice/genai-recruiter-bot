@@ -17,9 +17,9 @@ withdrawal.
 Two decisions worth knowing about:
 
 LoRA, not a full fine-tune. A full fine-tune of a 0.5B model needs roughly
-8 GB of RAM for the optimizer states alone. LoRA trains about half a percent
-of the weights, runs on a laptop CPU, and saves an adapter of a few megabytes
-that can live in the repository.
+8 GB of RAM for the optimizer states alone. LoRA trains 8.8M parameters, about
+1.8% of the 494M in the base model, runs on a laptop CPU, and saves a 34 MB
+adapter that can live in the repository.
 
 Loss is computed on the reply only. The prompt tokens are masked with -100, so
 the model is scored on what the recruiter should write, not on reproducing the
@@ -179,7 +179,7 @@ def main():
 
     print("\nNext:")
     print(f"  1. put this in .env:  LOCAL_EXIT_MODEL={out_dir}")
-    print( "  2. commit the folder — the adapter is only a few MB")
+    print( "  2. commit the folder — the adapter is about 34 MB")
     print( "  3. re-run section 8 of tests/test_evals.ipynb and compare "
            "against the base model on data/exit_advisor_valid.jsonl")
 

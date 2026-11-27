@@ -155,14 +155,21 @@ MAIN_AGENT_PROMPTS = {"v1": MAIN_AGENT_PROMPT_V1,
                       "v3": MAIN_AGENT_PROMPT_V3,
                       "v4": MAIN_AGENT_PROMPT_V4}
 
-# v2 is the default because it MEASURED best on the 59 labelled turns:
-#   v1 52.54%   v2 83.05%   v3 76.27%   v4 81.36%
+# v2 is the default because it MEASURED best on the 59 labelled turns. These
+# are the figures from the committed run, the same ones in tests/eval_summary.md
+# and in README.md:
+#   v1 49.15%   v2 79.66%   v3 72.88%   v4 77.97%
 # Both attempts to elaborate v2 lost to it. v3's few-shot examples are single
 # candidate messages while the labels depend on the whole conversation, and v4's
 # output-format block did not remove the `invalid` answers it was written for.
-# Do not "improve" this prompt without re-running tests/test_evals.ipynb.
+# Do not "improve" this prompt without re-running tests/test_evals.ipynb, and
+# copy the new numbers here as well as into the README.
 # See the Evaluation section of README.md.
 MAIN_AGENT_PROMPT_VERSION = os.getenv("MAIN_AGENT_PROMPT_VERSION", "v2")
+if MAIN_AGENT_PROMPT_VERSION not in MAIN_AGENT_PROMPTS:
+    raise ValueError(
+        f"MAIN_AGENT_PROMPT_VERSION={MAIN_AGENT_PROMPT_VERSION!r} is not one of "
+        f"{sorted(MAIN_AGENT_PROMPTS)}. Check .env, or Secrets in Streamlit Cloud.")
 MAIN_AGENT_SYSTEM_PROMPT = MAIN_AGENT_PROMPTS[MAIN_AGENT_PROMPT_VERSION]
 
 INFO_ADVISOR_SYSTEM_PROMPT = (
