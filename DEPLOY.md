@@ -22,7 +22,7 @@ git ls-files | findstr /i "\.env chroma_store schedule.db"
 ## 1. Push
 
 ```
-git remote add origin https://github.com/<your-username>/genai-recruiter-bot.git
+git remote add origin https://github.com/OlegRogazkinMedicalDevice/genai-recruiter-bot.git
 git push -u origin main
 ```
 
@@ -33,6 +33,10 @@ git push -u origin main
 3. Repository: your repo. Branch: `main`.
 4. **Main file path**: `streamlit_app/streamlit_main.py`
 5. Do not deploy yet — open **Advanced settings** first
+
+The repository must be **public**, or Streamlit cannot see it: the GitHub
+authorisation it asks for carries the `public_repo` scope only, and a private
+repository comes back as *This repository does not exist*.
 
 ## 3. Secrets
 
@@ -50,7 +54,14 @@ TOML, so the values are in double quotes — unlike `.env`, which has none.
 Leave `LOCAL_EXIT_MODEL` out. The fine-tuned model is a local folder with a
 torch dependency; the deployed app uses the OpenAI path on purpose.
 
-## 4. Deploy
+## 4. Python version
+
+In the same **Advanced settings**, set **Python 3.12**. The default offered is
+3.14, and `pysqlite3-binary`, `chromadb` and `scikit-learn` may have no wheels
+for it — pip then builds them from source inside a 1 GB container, which ends
+in a failed build or a resource-limit kill.
+
+## 5. Deploy
 
 First build takes a few minutes. Then open the URL and have one conversation
 end to end: a question about the role, a scheduling request, a confirmation.
@@ -81,3 +92,5 @@ The log is on the app page, under **Manage app**.
 ## Last step
 
 Put the URL in `README.md`, under Usage. It is part of what is submitted.
+
+Done: <https://genai-recruiter-bot-rogazkin.streamlit.app>

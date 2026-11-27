@@ -72,7 +72,7 @@ Advisor     Advisor     Advisor
 - [x] Closed days handled explicitly instead of returning nothing
 - [x] Fine-tuned Exit Advisor for candidate withdrawals (LoRA, local), measured against the base model
 - [x] Evals with a baseline, a ceiling, and a confusion matrix
-- [x] Streamlit interface (deployment to Streamlit Community Cloud pending)
+- [x] Streamlit interface, deployed to Streamlit Community Cloud
 
 ---
 <br></br>
@@ -135,8 +135,11 @@ In the browser:
 streamlit run streamlit_app/streamlit_main.py
 ```
 
-Deployed: **&lt;paste the Streamlit Community Cloud URL here&gt;**
-(the key goes in *Settings → Secrets*, never in the repository).
+Live: **https://genai-recruiter-bot-rogazkin.streamlit.app**
+
+The deployed app runs on Python 3.12 with the OpenAI Exit Advisor path; the
+key lives in *Settings → Secrets* on Streamlit Community Cloud and never in
+the repository.
 
 ---
 <br></br>
@@ -383,7 +386,9 @@ fine-tuned model is used from the notebook, and its dependencies live in
 - [x] LoRA adapter trained and committed to `models/exit-advisor-lora/`
 - [x] Exit Advisor measured before and after fine-tuning
 - [x] Final eval numbers in this README — measured 27 November 2026
-- [ ] Streamlit Community Cloud deployment URL
+- [x] Streamlit Community Cloud deployment — live at
+      <https://genai-recruiter-bot-rogazkin.streamlit.app>, all three routes
+      exercised against it on 27 November 2026
 
 ---
 <br></br>
