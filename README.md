@@ -176,11 +176,22 @@ the repository.
 The live app is the fastest way to see it:
 **<https://genai-recruiter-bot-rogazkin.streamlit.app>**
 
-What you see there: a badge under each message showing the Main Agent's
-decision for that turn — 🟦 continue, 🟩 schedule, 🟥 end — and, under it,
-*Main Agent consulted N advisor(s)*. Opening that shows which advisor was
-asked, what it decided, and the evidence it came back with: the slots the SQL
-lookup returned, or the job-description excerpts the vector store matched.
+![The screening conversation](docs/screenshots/conversation.png)
+
+A badge under each message shows the Main Agent's decision for that turn —
+🟦 continue, 🟩 schedule, 🟥 end — and under it sits *Main Agent consulted
+N advisor(s)*.
+
+![A consultation opened](docs/screenshots/consultation.png)
+
+Opening one shows which advisor was consulted, what it decided, and the
+evidence it came back with. Here the Scheduling Advisor decided *schedule →
+SQL lookup* and returned the three slots the calendar actually had free:
+Thursday 2024-04-04 at 09:00, 10:00 and 15:00 — the same three the message
+above offers. Nothing in that reply was invented.
+
+Both images are captured from the deployed app by a script that drives it
+end to end, so they cannot drift from what the app does.
 
 ---
 <br></br>
@@ -377,6 +388,8 @@ genai-recruiter-bot/
 ├── .streamlit/
 │   ├── config.toml
 │   └── secrets.toml.example        # the shape of the Streamlit Cloud secrets
+├── docs/
+│   └── screenshots/                # the images in the Screenshots section
 ├── .env.example
 ├── .gitignore
 ├── LICENSE

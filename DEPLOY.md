@@ -88,6 +88,19 @@ The log is on the app page, under **Manage app**.
 | `FileNotFoundError: chroma_store` | not committed; run the build script and commit it |
 | `OPENAI_API_KEY is not set` | Secrets not saved, or saved to a different app |
 | app exceeds resource limits | torch or transformers got into `requirements.txt` |
+| new text appears but new behaviour does not | see below |
+
+## After a push that changes anything under `app/`, reboot the app
+
+Streamlit Community Cloud pulls the new code and re-runs the **script**, but
+the Python process survives, so modules already in `sys.modules` stay at their
+old version. `streamlit_main.py` is the script and updates; `app/main.py` and
+`app/modules/*` are imports and do not. The app then runs half-new: the page
+text changes while the behaviour behind it does not, and the only clue is a
+`ValueError` in the log from the moment of the update.
+
+**Manage app → ⋮ → Reboot app.** That restarts the process and loads
+everything from the new commit.
 
 ## Last step
 
