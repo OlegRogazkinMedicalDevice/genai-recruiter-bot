@@ -38,17 +38,14 @@ def build_llm(model: Optional[str] = None) -> ChatOpenAI:
                       api_key=config.OPENAI_API_KEY)
 
 
-def propose(turns: List[dict],
-            conversation_start: str,
-            requested_phrase: str = "",
-            llm: Optional[ChatOpenAI] = None) -> str:
-    """Write the recruiter's scheduling SMS.
+def resolve_slots(conversation_start: str, requested_phrase: str = ""):
+    """The slots this turn should offer, and any note the SMS must carry.
 
-    requested_phrase is the candidate's own wording ("next Friday", "Monday at
-    3"), used to resolve a date against the conversation's own start time.
+    Separated from propose() so that consult() can report to the Main Agent
+    the very rows the message was written from. Looking them up twice would
+    let the evidence and the message disagree whenever the candidate names a
+    particular day.
     """
-    llm = llm or build_llm()
-
     on_date = ""
     note = ""
     if requested_phrase:
@@ -67,7 +64,13 @@ def propose(turns: List[dict],
         if on_date:
             note = (f"Nothing is free on {on_date}. Offer the alternatives below "
                     f"instead.")
+    return slots, note
 
+
+def write_sms(turns: List[dict], slots, note: str = "",
+              llm: Optional[ChatOpenAI] = None) -> str:
+    """Write the recruiter's SMS around slots the database returned."""
+    llm = llm or build_llm()
     history = "\n".join(f"{t['speaker']}: {t['text']}" for t in turns[-6:])
     prompt = (f"Conversation so far:\n{history}\n\n"
               f"Free slots: {db.describe_slots(slots)}\n"
@@ -76,6 +79,19 @@ def propose(turns: List[dict],
     response = llm.invoke([SystemMessage(content=config.SCHEDULING_ADVISOR_SYSTEM_PROMPT),
                            HumanMessage(content=prompt)])
     return response.content.strip()
+
+
+def propose(turns: List[dict],
+            conversation_start: str,
+            requested_phrase: str = "",
+            llm: Optional[ChatOpenAI] = None) -> str:
+    """Write the recruiter's scheduling SMS.
+
+    requested_phrase is the candidate's own wording ("next Friday", "Monday at
+    3"), used to resolve a date against the conversation's own start time.
+    """
+    slots, note = resolve_slots(conversation_start, requested_phrase)
+    return write_sms(turns, slots, note, llm)
 
 
 # --- consultation ---------------------------------------------------------
@@ -109,7 +125,7 @@ def consult(turns: List[dict], conversation_start: str,
         return {"advisor": "scheduling", "decision": "dont_schedule",
                 "draft": "", "evidence": []}
 
-    slots = db.find_available_slots(conversation_start)
+    slots, note = resolve_slots(conversation_start, requested_phrase)
     return {"advisor": "scheduling", "decision": "schedule",
-            "draft": propose(turns, conversation_start, requested_phrase, llm),
+            "draft": write_sms(turns, slots, note, llm),
             "evidence": db.describe_slots(slots)}

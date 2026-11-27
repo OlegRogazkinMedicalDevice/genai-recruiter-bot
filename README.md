@@ -463,6 +463,17 @@ this is written down rather than summarised as a success. The honest reading is
 that 15 examples are enough to move a 0.5B model's register and not enough to
 teach it a task.
 
+**The consultation costs an extra call per turn, and it is worth it.**
+Routing straight to an advisor took two API calls: the Main Agent's decision
+and the advisor's reply. Consulting takes three — the decision, the advisor's
+own yes-or-no, and the draft — and four when the first advisor declines and a
+second is asked. All the yes-or-no calls are capped at `max_tokens=5`, so the
+added cost is small, and what it buys is an advisor that can overrule the
+router: in the first turn of the smoke run the Main Agent said `schedule`, the
+Scheduling Advisor judged it too early, the Info Advisor saw no question, and
+the Main Agent wrote a bridging message instead of offering times to someone
+who had only just said hello.
+
 **Loss is computed on the reply only.** The prompt tokens are masked with
 `-100`, so the model is scored on what the recruiter should write rather than
 on reproducing the conversation it was handed. With 15 examples that is the

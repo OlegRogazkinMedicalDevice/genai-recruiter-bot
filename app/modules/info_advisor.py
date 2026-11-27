@@ -42,12 +42,18 @@ def retrieve(question: str, k: int = 3) -> List[str]:
     return [doc.page_content for doc in get_store().similarity_search(question, k=k)]
 
 
-def answer(question: str, llm: Optional[ChatOpenAI] = None) -> str:
-    """Answer a candidate's question, grounded in the job description."""
+def answer(question: str, llm: Optional[ChatOpenAI] = None,
+           chunks: Optional[List[str]] = None) -> str:
+    """Answer a candidate's question, grounded in the job description.
+
+    chunks lets the caller pass excerpts it has already retrieved, so that
+    consult() can show the Main Agent exactly the text the answer was built
+    from instead of searching the store a second time.
+    """
     llm = llm or ChatOpenAI(model=config.CHAT_MODEL,
                             temperature=config.TEMPERATURE,
                             api_key=config.OPENAI_API_KEY)
-    excerpts = "\n---\n".join(retrieve(question))
+    excerpts = "\n---\n".join(retrieve(question) if chunks is None else chunks)
     prompt = (f"Job description excerpts:\n{excerpts}\n\n"
               f"Candidate's question: {question}")
     response = llm.invoke([SystemMessage(content=config.INFO_ADVISOR_SYSTEM_PROMPT),
@@ -96,6 +102,8 @@ def consult(turns: List[dict], question: str,
         return {"advisor": "info", "decision": "info_not_needed",
                 "draft": "", "evidence": []}
 
-    excerpts = retrieve(question)
+    # Retrieved once and passed on: the evidence shown to the Main Agent is
+    # the same text the draft was written from, not a second search.
+    chunks = retrieve(question)
     return {"advisor": "info", "decision": "info_needed",
-            "draft": answer(question, llm), "evidence": excerpts}
+            "draft": answer(question, llm, chunks=chunks), "evidence": chunks}

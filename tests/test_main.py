@@ -135,6 +135,34 @@ def test_the_opening_turn_needs_no_advisor():
     assert len(bot.turns) == 1
 
 
+# --- the slots an advisor reports must be the slots it used ---------------
+
+def test_the_requested_day_changes_which_slots_are_resolved():
+    """The evidence shown to the Main Agent has to follow the request.
+
+    Looking the slots up a second time, without the candidate's wording, put
+    Thursday in the consultation panel while the message offered Friday.
+    """
+    from app.modules import db, scheduling_advisor
+
+    generic, _ = scheduling_advisor.resolve_slots(START)
+    friday, _ = scheduling_advisor.resolve_slots(START, "can we do next Friday morning?")
+
+    assert db.describe_slots(generic) != db.describe_slots(friday)
+    assert "Friday" in db.describe_slots(friday)
+    assert "Thursday" in db.describe_slots(generic)
+
+
+def test_a_closed_day_is_answered_rather_than_dropped():
+    from app.modules import db, scheduling_advisor
+
+    slots, note = scheduling_advisor.resolve_slots(START, "how about Monday?")
+
+    assert slots, "alternatives must still be offered"
+    assert "does not interview" in note
+    assert "Monday" not in db.describe_slots(slots)
+
+
 # --- plain runner ---------------------------------------------------------
 
 def _run():

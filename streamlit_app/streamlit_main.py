@@ -101,6 +101,12 @@ st.title("Python Developer — SMS screening")
 st.caption("The Main Agent consults the Info, Scheduling or Exit advisor, then "
            "writes the message itself. Open a consultation to see what was asked.")
 
+# A tab left open across a redeploy still holds the previous shape of these
+# tuples, so unpack defensively rather than greeting the visitor with a
+# ValueError.
+st.session_state.messages = [tuple(m) + ([],) * (4 - len(m))
+                             for m in st.session_state.messages]
+
 for role, text, action, consultations in st.session_state.messages:
     with st.chat_message(role):
         st.write(text)
